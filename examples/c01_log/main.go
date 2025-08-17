@@ -3,7 +3,6 @@ package main
 import (
 	"bytes"
 	"fmt"
-	"os"
 
 	"github.com/yggai/ygggo_log"
 )
@@ -30,29 +29,11 @@ func main() {
 
 	fmt.Printf("缓冲区中的日志内容:\n%s", buf.String())
 
-	fmt.Println("\n3. 使用文件输出的日志记录器:")
-	// 示例3: 输出到文件
-	file, err := os.Create("app.log")
-	if err != nil {
-		fmt.Printf("创建日志文件失败: %v\n", err)
-		return
-	}
-	defer file.Close()
-
-	fileLogger := ygggo_log.NewLogger(file)
-	fileLogger.Info("这条日志将写入到文件中")
-	fileLogger.Warning("文件日志警告信息")
-	fileLogger.Error("文件日志错误信息")
-
-	fmt.Println("日志已写入到 app.log 文件中")
-
-	// 读取并显示文件内容
-	content, err := os.ReadFile("app.log")
-	if err != nil {
-		fmt.Printf("读取日志文件失败: %v\n", err)
-		return
-	}
-	fmt.Printf("文件内容:\n%s", string(content))
+	fmt.Println("\n3. 全局日志（默认约定：控制台彩色+文件JSON+轮转+异步）:")
+	// 使用包默认全局日志（InitLogEnv 已在导入时自动调用）
+	ygggo_log.Info("全局日志：系统启动", "user=alice", map[string]any{"tries": 3, "pi": 3.14, "ok": true})
+	ygggo_log.Warning("全局日志：警告", "module=core")
+	ygggo_log.Error("全局日志：错误", "code=E1001")
 
 	fmt.Println("\n4. Panic日志示例 (注意：这会导致程序崩溃):")
 	fmt.Println("取消注释下面的代码来测试Panic功能:")

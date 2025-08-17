@@ -4,6 +4,7 @@ import (
 	"io"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/yggai/ygggo_env"
 )
@@ -102,39 +103,33 @@ func NewLoggerFromEnvWithOutput(output io.Writer) *Logger {
 
 // NewLoggerFromConfig 根据配置创建日志记录器
 func NewLoggerFromConfig(config *LogConfig) *Logger {
-	var output io.Writer = os.Stdout
+	// 采用约定大于配置：
+	// - 默认INFO
+	// - 控制台彩色、文件JSON
+	// - 文件轮转、大小/数量限制
+	// - 异步写入
 
-	// 处理文件输出和控制台输出
-	if config.OutputFile != "" && config.Console {
-		// 同时输出到文件和控制台（文件使用轮转写入器）
-		writer, err := NewRotatingWriter(config.OutputFile, config.FileSize, config.FileNum)
-		if err != nil {
-			output = os.Stdout
-		} else {
-			// 使用标准库 MultiWriter
-			output = io.MultiWriter(os.Stdout, writer)
-		}
-	} else if config.OutputFile != "" {
-		// 只输出到文件（使用轮转写入器）
-		writer, err := NewRotatingWriter(config.OutputFile, config.FileSize, config.FileNum)
-		if err != nil {
-			output = os.Stdout
-		} else {
-			output = writer
-		}
+	// 控制台彩色（异步）
+	console := NewAsyncWriter(os.Stdout, 1024)
+
+	// 文件（异步+轮转）
+	filePath := config.OutputFile
+	if filePath == "" {
+		_ = os.MkdirAll("logs", 0755)
+		filePath = time.Now().Format("logs/20060102_150405.log")
 	}
-	// 如果没有指定文件，默认输出到标准输出
-
-	logger := NewLogger(output)
-	logger.minLevel = config.Level
-
-	// 根据配置选择格式化器
-	if config.Color {
-		logger.formatter = NewColorFormatter()
-	} else {
-		logger.formatter = createFormatter(config.Format)
+	rot, _ := NewRotatingWriter(filePath, config.FileSize, config.FileNum)
+	var fileOut io.Writer
+	if rot != nil {
+		fileOut = rot // 同步写入，避免测试环境清理冲突
 	}
 
+	// 组合格式化器：控制台彩色 + 文件JSON
+	combined := NewCombinedFormatter(console, fileOut)
+
+	logger := NewLogger(io.Discard) // output弃用，由formatter写到目标
+	logger.minLevel = config.Level  // 默认由配置决定，默认INFO
+	logger.formatter = combined
 	return logger
 }
 

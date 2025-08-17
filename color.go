@@ -28,12 +28,14 @@ func NewColorFormatter() *ColorFormatter {
 
 // Format 格式化为彩色文本格式
 func (f *ColorFormatter) Format(writer io.Writer, level LogLevel, message string) {
-	timestamp := time.Now().Format("2006-01-02 15:04:05")
+	// 时间：年月日时分秒.毫秒
+	timestamp := time.Now().Format("2006-01-02 15:04:05.000")
 	colorCode := getColorCode(level)
 	resetCode := getResetCode()
+	file, line := callerInfo()
 
-	logEntry := fmt.Sprintf("%s%s [%s] %s%s\n",
-		colorCode, timestamp, level.String(), message, resetCode)
+	logEntry := fmt.Sprintf("%s%s [%s] %s:%d %s%s\n",
+		colorCode, timestamp, level.String(), file, line, message, resetCode)
 	writer.Write([]byte(logEntry))
 }
 
