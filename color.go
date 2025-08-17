@@ -31,8 +31,8 @@ func (f *ColorFormatter) Format(writer io.Writer, level LogLevel, message string
 	timestamp := time.Now().Format("2006-01-02 15:04:05")
 	colorCode := getColorCode(level)
 	resetCode := getResetCode()
-	
-	logEntry := fmt.Sprintf("%s%s [%s] %s%s\n", 
+
+	logEntry := fmt.Sprintf("%s%s [%s] %s%s\n",
 		colorCode, timestamp, level.String(), message, resetCode)
 	writer.Write([]byte(logEntry))
 }
@@ -41,46 +41,23 @@ func (f *ColorFormatter) Format(writer io.Writer, level LogLevel, message string
 func getColorCode(level LogLevel) string {
 	switch level {
 	case DebugLevel:
-		return ColorCyan    // 青色
+		return ColorCyan // 青色
 	case InfoLevel:
-		return ColorGreen   // 绿色
+		return ColorGreen // 绿色
 	case WarningLevel:
-		return ColorYellow  // 黄色
+		return ColorYellow // 黄色
 	case ErrorLevel:
-		return ColorRed     // 红色
+		return ColorRed // 红色
 	case PanicLevel:
-		return ColorPurple  // 紫色
+		return ColorPurple // 紫色
 	default:
-		return ColorWhite   // 白色
+		return ColorWhite // 白色
 	}
 }
 
 // getResetCode 获取重置颜色代码
 func getResetCode() string {
 	return ColorReset
-}
-
-// MultiWriter 多重写入器，支持同时写入多个目标
-type MultiWriter struct {
-	writers []io.Writer
-}
-
-// NewMultiWriter 创建多重写入器
-func NewMultiWriter(writers ...io.Writer) *MultiWriter {
-	return &MultiWriter{
-		writers: writers,
-	}
-}
-
-// Write 实现io.Writer接口
-func (mw *MultiWriter) Write(p []byte) (n int, err error) {
-	for _, w := range mw.writers {
-		n, err = w.Write(p)
-		if err != nil {
-			return
-		}
-	}
-	return len(p), nil
 }
 
 // ColorAwareMultiWriter 颜色感知的多重写入器
@@ -112,7 +89,7 @@ func (cw *ColorAwareMultiWriter) WriteWithFormatter(level LogLevel, message stri
 			textFormatter.Format(cw.consoleWriter, level, message)
 		}
 	}
-	
+
 	// 写入文件（不带颜色）
 	if cw.fileWriter != nil {
 		textFormatter := NewTextFormatter()

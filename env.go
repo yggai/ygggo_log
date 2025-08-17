@@ -111,7 +111,8 @@ func NewLoggerFromConfig(config *LogConfig) *Logger {
 		if err != nil {
 			output = os.Stdout
 		} else {
-			output = NewMultiWriter(os.Stdout, writer)
+			// 使用标准库 MultiWriter
+			output = io.MultiWriter(os.Stdout, writer)
 		}
 	} else if config.OutputFile != "" {
 		// 只输出到文件（使用轮转写入器）

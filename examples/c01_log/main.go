@@ -13,10 +13,10 @@ func main() {
 
 	// 示例1: 使用默认日志记录器（输出到标准输出）
 	fmt.Println("1. 使用默认日志记录器:")
-	ygggo_log.Debug("这是一条调试信息")
-	ygggo_log.Info("这是一条信息")
-	ygggo_log.Warning("这是一条警告信息")
-	ygggo_log.Error("这是一条错误信息")
+	ygggo_log.Debug("这是一条调试信息", map[string]any{"a": 1}, "b=1.1", true)
+	ygggo_log.Info("这是一条信息", "user=alice", 123)
+	ygggo_log.Warning("这是一条警告信息", map[string]any{"warn": true})
+	ygggo_log.Error("这是一条错误信息", "code=E123", 3.14)
 
 	fmt.Println("\n2. 使用自定义输出的日志记录器:")
 	// 示例2: 创建自定义日志记录器（输出到缓冲区）
