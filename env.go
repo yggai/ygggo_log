@@ -15,6 +15,8 @@ type LogConfig struct {
 	Format     LogFormat // 日志格式
 	Console    bool      // 是否输出到控制台
 	Color      bool      // 是否使用彩色输出
+	FileSize   int64     // 日志文件大小限制（字节）
+	FileNum    int       // 日志文件数量限制
 }
 
 // LoadConfigFromEnv 从环境变量加载日志配置
@@ -23,11 +25,13 @@ func LoadConfigFromEnv() *LogConfig {
 	ygggo_env.LoadEnv()
 
 	config := &LogConfig{
-		Level:      InfoLevel,  // 默认级别为INFO
-		OutputFile: "",         // 默认输出到标准输出
-		Format:     TextFormat, // 默认格式为文本
-		Console:    false,      // 默认不强制输出到控制台
-		Color:      false,      // 默认不使用彩色输出
+		Level:      InfoLevel,         // 默认级别为INFO
+		OutputFile: "",                // 默认输出到标准输出
+		Format:     TextFormat,        // 默认格式为文本
+		Console:    false,             // 默认不强制输出到控制台
+		Color:      false,             // 默认不使用彩色输出
+		FileSize:   100 * 1024 * 1024, // 默认100MB
+		FileNum:    3,                 // 默认3个文件
 	}
 
 	// 读取日志级别
@@ -48,6 +52,14 @@ func LoadConfigFromEnv() *LogConfig {
 	// 读取彩色输出配置
 	colorStr := ygggo_env.GetStr("YGGGO_LOG_COLOR", "false")
 	config.Color = parseBool(colorStr)
+
+	// 读取文件大小配置
+	fileSizeStr := ygggo_env.GetStr("YGGGO_LOG_FILE_SIZE", "100M")
+	config.FileSize = parseSizeString(fileSizeStr)
+
+	// 读取文件数量配置
+	fileNumStr := ygggo_env.GetStr("YGGGO_LOG_FILE_NUM", "3")
+	config.FileNum = parseFileNum(fileNumStr)
 
 	return config
 }
@@ -94,23 +106,20 @@ func NewLoggerFromConfig(config *LogConfig) *Logger {
 
 	// 处理文件输出和控制台输出
 	if config.OutputFile != "" && config.Console {
-		// 同时输出到文件和控制台
-		file, err := os.OpenFile(config.OutputFile, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+		// 同时输出到文件和控制台（文件使用轮转写入器）
+		writer, err := NewRotatingWriter(config.OutputFile, config.FileSize, config.FileNum)
 		if err != nil {
-			// 如果创建文件失败，回退到标准输出
 			output = os.Stdout
 		} else {
-			// 创建多重写入器
-			output = NewMultiWriter(os.Stdout, file)
+			output = NewMultiWriter(os.Stdout, writer)
 		}
 	} else if config.OutputFile != "" {
-		// 只输出到文件
-		file, err := os.OpenFile(config.OutputFile, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+		// 只输出到文件（使用轮转写入器）
+		writer, err := NewRotatingWriter(config.OutputFile, config.FileSize, config.FileNum)
 		if err != nil {
-			// 如果创建文件失败，回退到标准输出
 			output = os.Stdout
 		} else {
-			output = file
+			output = writer
 		}
 	}
 	// 如果没有指定文件，默认输出到标准输出
