@@ -1,179 +1,87 @@
 # ygggo_log
 
-一个简单易用的Go语言日志库，支持多种日志级别和自定义输出。
+A pragmatic, convention-over-configuration logging library for Go.
 
-## 功能特性
+- Global logger out-of-the-box
+- Color console + JSON file logging by default
+- File rotation by size and count (100MB / 3 files by default)
+- Env-based config and thread-safe singleton
+- Structured logs, variadic APIs with colorized parameters
 
-- 支持5种日志级别：DEBUG、INFO、WARNING、ERROR、PANIC
-- 支持自定义输出目标（标准输出、文件、缓冲区等）
-- 支持环境变量配置（通过 .env 文件）
-- **结构化日志**：支持文本和JSON两种格式
-- **彩色日志**：支持美观的彩色控制台输出
-- **单例模式**：`GetLogEnv()` 始终返回同一个日志对象
-- **多重输出**：支持同时输出到控制台和文件
-- 日志级别过滤功能
-- 线程安全的并发支持
-- 自动添加时间戳
-- 简洁的API设计
-- 完整的单元测试覆盖
+Switch language: English | [中文](./README.zh.md)
 
-## 安装
+## Table of Contents
+- [ygggo\_log](#ygggo_log)
+  - [Table of Contents](#table-of-contents)
+  - [Features](#features)
+  - [Installation](#installation)
+  - [Quick Start (Global Logger)](#quick-start-global-logger)
+  - [Conventions (Defaults)](#conventions-defaults)
+  - [Environment Variables](#environment-variables)
+  - [Examples](#examples)
+  - [Testing](#testing)
+  - [License](#license)
 
+## Features
+- Five levels: DEBUG, INFO, WARNING, ERROR, PANIC
+- Structured logs: text or JSON
+- Colorized parameters with type-aware coloring
+- Environment-based configuration and a thread-safe singleton
+
+## Installation
 ```bash
 go get github.com/yggai/ygggo_log
 ```
 
-## 快速开始
-
-### 使用默认日志记录器
-
+## Quick Start (Global Logger)
 ```go
 package main
-
-import "github.com/yggai/ygggo_log"
-
-func main() {
-    ygggo_log.Debug("这是一条调试信息")
-    ygggo_log.Info("这是一条信息")
-    ygggo_log.Warning("这是一条警告信息")
-    ygggo_log.Error("这是一条错误信息")
-    // ygggo_log.Panic("这会触发panic") // 谨慎使用
-}
-```
-
-### 使用环境变量配置
-
-创建 `.env` 文件：
-```env
-# 日志配置环境变量
-YGGGO_LOG_LEVEL=DEBUG
-YGGGO_LOG_FILE=app.log
-YGGGO_LOG_FORMAT=json
-YGGGO_LOG_CONSOLE=true
-YGGGO_LOG_COLOR=true
-```
-
-使用环境变量配置的日志记录器：
-```go
-package main
-
-import "github.com/yggai/ygggo_log"
+import gglog "github.com/yggai/ygggo_log"
 
 func main() {
-    // 自动从 .env 文件加载配置
-    logger := ygggo_log.GetLogEnv()
-
-    logger.Debug("这是DEBUG信息")
-    logger.Info("这是INFO信息")
-    logger.Warning("这是WARNING信息")
-    logger.Error("这是ERROR信息")
+    // Initialized automatically at import via package init()
+    gglog.Info("service started", "port=8080", map[string]any{"tries": 3, "ok": true, "pi": 3.14})
+    gglog.Warning("slow request", "path=/api")
+    gglog.Error("db error", "code=E1001")
 }
 ```
+- Console: colored, e.g. `2025-01-01 10:11:12.345 [INFO] main.go:12 message key=value ...`
+- File: JSON records under `logs/` with rotation
 
-### 使用自定义日志记录器
+## Conventions (Defaults)
+- Level: INFO
+- Console: colored output with time (milliseconds), level, file:line, message, params
+- File: enabled by default, path `logs/YYYYMMDD_HHMMSS.log`, JSON format
+- File rotation: size 100MB, count 3 files
+- High-performance buffering + async for console; file is rotation-safe (synchronous by default for stability)
 
-```go
-package main
+## Environment Variables
+- YGGGO_LOG_LEVEL: DEBUG|INFO|WARNING|ERROR|PANIC (default INFO)
+- YGGGO_LOG_FILE: file path (auto-generated under `logs/` when empty)
+- YGGGO_LOG_FORMAT: text|json (defaults to text; file uses JSON under conventions)
+- YGGGO_LOG_CONSOLE: true|false (console enabled by default under conventions)
+- YGGGO_LOG_COLOR: true|false (console colors enabled by default under conventions)
+- YGGGO_LOG_FILE_SIZE: e.g. 100M (default 100M)
+- YGGGO_LOG_FILE_NUM: integer >=1 (default 3)
 
-import (
-    "os"
-    "github.com/yggai/ygggo_log"
-)
+## Examples
+See `examples/`:
+- c01_log: basic global usage (colored console + JSON file)
+- c02_env_config: configure via env
+- c03_singleton: singleton
+- c04_structured_log: text vs JSON
+- c05_color_log: color demo
 
-func main() {
-    // 输出到文件
-    file, _ := os.Create("app.log")
-    defer file.Close()
-
-    logger := ygggo_log.NewLogger(file)
-    logger.Info("这条日志将写入文件")
-}
-```
-
-## API 文档
-
-### 日志级别
-
-- `Debug(message string)` - 调试级别日志
-- `Info(message string)` - 信息级别日志
-- `Warning(message string)` - 警告级别日志
-- `Error(message string)` - 错误级别日志
-- `Panic(message string)` - Panic级别日志（会触发panic）
-
-### 环境变量配置与单例模式
-
-- `GetLogEnv() *Logger` - 获取单例日志记录器（基于环境变量配置）
-- `LoadConfigFromEnv() *LogConfig` - 从环境变量加载配置
-
-**重要特性**：
-- `GetLogEnv()` 实现了单例模式，无论在代码的任何地方调用，都会返回同一个日志对象
-- 单例模式是线程安全的，支持并发调用
-- 配置只在第一次调用时加载，后续调用不会重新读取环境变量
-
-支持的环境变量：
-- `YGGGO_LOG_LEVEL` - 日志级别（DEBUG、INFO、WARNING、ERROR、PANIC）
-- `YGGGO_LOG_FILE` - 输出文件路径（空值表示输出到标准输出）
-- `YGGGO_LOG_FORMAT` - 日志格式（text、json，默认为text）
-- `YGGGO_LOG_CONSOLE` - 是否强制输出到控制台（true、false，默认为false）
-- `YGGGO_LOG_COLOR` - 是否启用彩色输出（true、false，默认为false）
-
-### 彩色日志
-
-支持美观的彩色控制台输出，不同日志级别使用不同颜色：
-
-- **DEBUG**: 青色
-- **INFO**: 绿色
-- **WARNING**: 黄色
-- **ERROR**: 红色
-- **PANIC**: 紫色
-
-彩色输出只在控制台显示，文件中保存纯文本格式。
-
-### 多重输出
-
-- 设置 `YGGGO_LOG_CONSOLE=true` 可强制输出到控制台
-- 同时设置文件和控制台输出，日志会写入两个目标
-- 控制台可显示彩色，文件保存纯文本
-
-### 自定义日志记录器
-
-- `NewLogger(output io.Writer) *Logger` - 创建新的日志记录器
-
-## 示例
-
-查看 `examples/` 目录中的完整示例：
-
-- `c01_log/main.go` - 基本日志功能示例
-- `c02_env_config/main.go` - 环境变量配置示例
-- `c03_singleton/main.go` - 单例模式示例
-- `c04_structured_log/main.go` - 结构化日志示例
-- `c05_color_log/main.go` - 彩色日志示例
-
-运行示例：
-
+Run:
 ```bash
 go run examples/c01_log/main.go
-go run examples/c02_env_config/main.go
-go run examples/c03_singleton/main.go
-go run examples/c04_structured_log/main.go
-go run examples/c05_color_log/main.go
 ```
 
-## 测试
-
-运行所有测试：
-
+## Testing
 ```bash
-go test -v
+go test -v ./...
 ```
 
-## 日志格式
-
-日志输出格式为：`时间戳 [级别] 消息`
-
-示例：
-```
-2025-08-17 20:02:00 [INFO] 这是一条信息
-2025-08-17 20:02:00 [ERROR] 这是一条错误信息
-```
-Go语言用于记录日志的底层核心库
+## License
+PolyForm Noncommercial License 1.0.0 — noncommercial use only. Author: 源滚滚 <1156956636@qq.com>.
+Issues welcome; PRs not accepted (personal research project).
