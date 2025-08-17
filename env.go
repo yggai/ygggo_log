@@ -148,3 +148,15 @@ func parseBool(boolStr string) bool {
 		return false // 默认返回false
 	}
 }
+
+// InitLogEnv 基于环境变量初始化全局日志（defaultLogger）
+// 可显式调用；包导入时也会通过 init() 自动调用一次
+func InitLogEnv() {
+	config := LoadConfigFromEnv()
+	defaultLogger = NewLoggerFromConfig(config)
+}
+
+func init() {
+	// 包导入时自动初始化一次
+	InitLogEnv()
+}
