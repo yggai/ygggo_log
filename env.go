@@ -13,6 +13,8 @@ type LogConfig struct {
 	Level      LogLevel  // 日志级别
 	OutputFile string    // 输出文件路径，空字符串表示输出到标准输出
 	Format     LogFormat // 日志格式
+	Console    bool      // 是否输出到控制台
+	Color      bool      // 是否使用彩色输出
 }
 
 // LoadConfigFromEnv 从环境变量加载日志配置
@@ -24,6 +26,8 @@ func LoadConfigFromEnv() *LogConfig {
 		Level:      InfoLevel,  // 默认级别为INFO
 		OutputFile: "",         // 默认输出到标准输出
 		Format:     TextFormat, // 默认格式为文本
+		Console:    false,      // 默认不强制输出到控制台
+		Color:      false,      // 默认不使用彩色输出
 	}
 
 	// 读取日志级别
@@ -36,6 +40,14 @@ func LoadConfigFromEnv() *LogConfig {
 	// 读取日志格式
 	formatStr := ygggo_env.GetStr("YGGGO_LOG_FORMAT", "text")
 	config.Format = parseLogFormat(formatStr)
+
+	// 读取控制台输出配置
+	consoleStr := ygggo_env.GetStr("YGGGO_LOG_CONSOLE", "false")
+	config.Console = parseBool(consoleStr)
+
+	// 读取彩色输出配置
+	colorStr := ygggo_env.GetStr("YGGGO_LOG_COLOR", "false")
+	config.Color = parseBool(colorStr)
 
 	return config
 }
@@ -65,7 +77,14 @@ func NewLoggerFromEnvWithOutput(output io.Writer) *Logger {
 	config := LoadConfigFromEnv()
 	logger := NewLogger(output)
 	logger.minLevel = config.Level
-	logger.formatter = createFormatter(config.Format)
+
+	// 根据配置选择格式化器
+	if config.Color {
+		logger.formatter = NewColorFormatter()
+	} else {
+		logger.formatter = createFormatter(config.Format)
+	}
+
 	return logger
 }
 
@@ -73,8 +92,19 @@ func NewLoggerFromEnvWithOutput(output io.Writer) *Logger {
 func NewLoggerFromConfig(config *LogConfig) *Logger {
 	var output io.Writer = os.Stdout
 
-	// 如果指定了输出文件，则创建文件
-	if config.OutputFile != "" {
+	// 处理文件输出和控制台输出
+	if config.OutputFile != "" && config.Console {
+		// 同时输出到文件和控制台
+		file, err := os.OpenFile(config.OutputFile, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+		if err != nil {
+			// 如果创建文件失败，回退到标准输出
+			output = os.Stdout
+		} else {
+			// 创建多重写入器
+			output = NewMultiWriter(os.Stdout, file)
+		}
+	} else if config.OutputFile != "" {
+		// 只输出到文件
 		file, err := os.OpenFile(config.OutputFile, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
 		if err != nil {
 			// 如果创建文件失败，回退到标准输出
@@ -83,9 +113,29 @@ func NewLoggerFromConfig(config *LogConfig) *Logger {
 			output = file
 		}
 	}
+	// 如果没有指定文件，默认输出到标准输出
 
 	logger := NewLogger(output)
 	logger.minLevel = config.Level
-	logger.formatter = createFormatter(config.Format)
+
+	// 根据配置选择格式化器
+	if config.Color {
+		logger.formatter = NewColorFormatter()
+	} else {
+		logger.formatter = createFormatter(config.Format)
+	}
+
 	return logger
+}
+
+// parseBool 解析布尔值字符串
+func parseBool(boolStr string) bool {
+	switch strings.ToLower(boolStr) {
+	case "true", "1", "yes", "on":
+		return true
+	case "false", "0", "no", "off":
+		return false
+	default:
+		return false // 默认返回false
+	}
 }

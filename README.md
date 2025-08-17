@@ -8,7 +8,9 @@
 - 支持自定义输出目标（标准输出、文件、缓冲区等）
 - 支持环境变量配置（通过 .env 文件）
 - **结构化日志**：支持文本和JSON两种格式
+- **彩色日志**：支持美观的彩色控制台输出
 - **单例模式**：`GetLogEnv()` 始终返回同一个日志对象
+- **多重输出**：支持同时输出到控制台和文件
 - 日志级别过滤功能
 - 线程安全的并发支持
 - 自动添加时间戳
@@ -47,6 +49,8 @@ func main() {
 YGGGO_LOG_LEVEL=DEBUG
 YGGGO_LOG_FILE=app.log
 YGGGO_LOG_FORMAT=json
+YGGGO_LOG_CONSOLE=true
+YGGGO_LOG_COLOR=true
 ```
 
 使用环境变量配置的日志记录器：
@@ -110,6 +114,26 @@ func main() {
 - `YGGGO_LOG_LEVEL` - 日志级别（DEBUG、INFO、WARNING、ERROR、PANIC）
 - `YGGGO_LOG_FILE` - 输出文件路径（空值表示输出到标准输出）
 - `YGGGO_LOG_FORMAT` - 日志格式（text、json，默认为text）
+- `YGGGO_LOG_CONSOLE` - 是否强制输出到控制台（true、false，默认为false）
+- `YGGGO_LOG_COLOR` - 是否启用彩色输出（true、false，默认为false）
+
+### 彩色日志
+
+支持美观的彩色控制台输出，不同日志级别使用不同颜色：
+
+- **DEBUG**: 青色
+- **INFO**: 绿色
+- **WARNING**: 黄色
+- **ERROR**: 红色
+- **PANIC**: 紫色
+
+彩色输出只在控制台显示，文件中保存纯文本格式。
+
+### 多重输出
+
+- 设置 `YGGGO_LOG_CONSOLE=true` 可强制输出到控制台
+- 同时设置文件和控制台输出，日志会写入两个目标
+- 控制台可显示彩色，文件保存纯文本
 
 ### 自定义日志记录器
 
@@ -123,6 +147,7 @@ func main() {
 - `c02_env_config/main.go` - 环境变量配置示例
 - `c03_singleton/main.go` - 单例模式示例
 - `c04_structured_log/main.go` - 结构化日志示例
+- `c05_color_log/main.go` - 彩色日志示例
 
 运行示例：
 
@@ -131,6 +156,7 @@ go run examples/c01_log/main.go
 go run examples/c02_env_config/main.go
 go run examples/c03_singleton/main.go
 go run examples/c04_structured_log/main.go
+go run examples/c05_color_log/main.go
 ```
 
 ## 测试
