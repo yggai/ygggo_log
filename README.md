@@ -6,6 +6,8 @@
 
 - 支持5种日志级别：DEBUG、INFO、WARNING、ERROR、PANIC
 - 支持自定义输出目标（标准输出、文件、缓冲区等）
+- 支持环境变量配置（通过 .env 文件）
+- 日志级别过滤功能
 - 自动添加时间戳
 - 简洁的API设计
 - 完整的单元测试覆盖
@@ -31,6 +33,32 @@ func main() {
     ygggo_log.Warning("这是一条警告信息")
     ygggo_log.Error("这是一条错误信息")
     // ygggo_log.Panic("这会触发panic") // 谨慎使用
+}
+```
+
+### 使用环境变量配置
+
+创建 `.env` 文件：
+```env
+# 日志配置环境变量
+YGGGO_LOG_LEVEL=DEBUG
+YGGGO_LOG_FILE=app.log
+```
+
+使用环境变量配置的日志记录器：
+```go
+package main
+
+import "github.com/yggai/ygggo_log"
+
+func main() {
+    // 自动从 .env 文件加载配置
+    logger := ygggo_log.GetLogEnv()
+
+    logger.Debug("这是DEBUG信息")
+    logger.Info("这是INFO信息")
+    logger.Warning("这是WARNING信息")
+    logger.Error("这是ERROR信息")
 }
 ```
 
@@ -63,6 +91,15 @@ func main() {
 - `Warning(message string)` - 警告级别日志
 - `Error(message string)` - 错误级别日志
 - `Panic(message string)` - Panic级别日志（会触发panic）
+
+### 环境变量配置
+
+- `GetLogEnv() *Logger` - 根据环境变量创建日志记录器
+- `LoadConfigFromEnv() *LogConfig` - 从环境变量加载配置
+
+支持的环境变量：
+- `YGGGO_LOG_LEVEL` - 日志级别（DEBUG、INFO、WARNING、ERROR、PANIC）
+- `YGGGO_LOG_FILE` - 输出文件路径（空值表示输出到标准输出）
 
 ### 自定义日志记录器
 

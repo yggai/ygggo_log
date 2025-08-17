@@ -38,7 +38,8 @@ func (l LogLevel) String() string {
 
 // Logger 日志记录器结构体
 type Logger struct {
-	output io.Writer
+	output   io.Writer
+	minLevel LogLevel // 最小日志级别，低于此级别的日志将被过滤
 }
 
 // NewLogger 创建一个新的日志记录器
@@ -47,12 +48,18 @@ func NewLogger(output io.Writer) *Logger {
 		output = os.Stdout
 	}
 	return &Logger{
-		output: output,
+		output:   output,
+		minLevel: DebugLevel, // 默认显示所有级别的日志
 	}
 }
 
 // log 内部日志记录方法
 func (l *Logger) log(level LogLevel, message string) {
+	// 检查日志级别是否满足最小级别要求
+	if level < l.minLevel {
+		return
+	}
+
 	timestamp := time.Now().Format("2006-01-02 15:04:05")
 	logEntry := fmt.Sprintf("%s [%s] %s\n", timestamp, level.String(), message)
 	l.output.Write([]byte(logEntry))
