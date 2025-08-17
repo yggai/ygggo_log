@@ -7,7 +7,9 @@
 - 支持5种日志级别：DEBUG、INFO、WARNING、ERROR、PANIC
 - 支持自定义输出目标（标准输出、文件、缓冲区等）
 - 支持环境变量配置（通过 .env 文件）
+- **单例模式**：`GetLogEnv()` 始终返回同一个日志对象
 - 日志级别过滤功能
+- 线程安全的并发支持
 - 自动添加时间戳
 - 简洁的API设计
 - 完整的单元测试覆盖
@@ -92,10 +94,15 @@ func main() {
 - `Error(message string)` - 错误级别日志
 - `Panic(message string)` - Panic级别日志（会触发panic）
 
-### 环境变量配置
+### 环境变量配置与单例模式
 
-- `GetLogEnv() *Logger` - 根据环境变量创建日志记录器
+- `GetLogEnv() *Logger` - 获取单例日志记录器（基于环境变量配置）
 - `LoadConfigFromEnv() *LogConfig` - 从环境变量加载配置
+
+**重要特性**：
+- `GetLogEnv()` 实现了单例模式，无论在代码的任何地方调用，都会返回同一个日志对象
+- 单例模式是线程安全的，支持并发调用
+- 配置只在第一次调用时加载，后续调用不会重新读取环境变量
 
 支持的环境变量：
 - `YGGGO_LOG_LEVEL` - 日志级别（DEBUG、INFO、WARNING、ERROR、PANIC）
@@ -107,16 +114,18 @@ func main() {
 
 ## 示例
 
-查看 `examples/c01_log/` 目录中的完整示例：
+查看 `examples/` 目录中的完整示例：
 
-- `main.go` - 基本使用示例
-- `panic_example.go` - Panic功能示例
+- `c01_log/main.go` - 基本日志功能示例
+- `c02_env_config/main.go` - 环境变量配置示例
+- `c03_singleton/main.go` - 单例模式示例
 
 运行示例：
 
 ```bash
 go run examples/c01_log/main.go
-go run examples/c01_log/panic_example.go
+go run examples/c02_env_config/main.go
+go run examples/c03_singleton/main.go
 ```
 
 ## 测试

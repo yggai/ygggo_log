@@ -52,11 +52,7 @@ func parseLogLevel(levelStr string) LogLevel {
 	}
 }
 
-// GetLogEnv 根据环境变量创建日志记录器
-func GetLogEnv() *Logger {
-	config := LoadConfigFromEnv()
-	return NewLoggerFromConfig(config)
-}
+// GetLogEnv 现在在 singleton.go 中实现为单例模式
 
 // NewLoggerFromEnvWithOutput 根据环境变量创建日志记录器，但使用指定的输出
 func NewLoggerFromEnvWithOutput(output io.Writer) *Logger {

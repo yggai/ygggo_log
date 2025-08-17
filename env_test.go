@@ -66,6 +66,9 @@ func TestLoadConfigFromEnv_LogFile(t *testing.T) {
 }
 
 func TestGetLogEnv_DefaultConfig(t *testing.T) {
+	// 重置单例以确保测试独立性
+	ResetSingleton()
+
 	// 清理环境变量
 	os.Unsetenv("YGGGO_LOG_LEVEL")
 	os.Unsetenv("YGGGO_LOG_FILE")
@@ -78,6 +81,9 @@ func TestGetLogEnv_DefaultConfig(t *testing.T) {
 }
 
 func TestGetLogEnv_WithFileOutput(t *testing.T) {
+	// 重置单例以确保测试独立性
+	ResetSingleton()
+
 	testFile := "test_env.log"
 	os.Setenv("YGGGO_LOG_FILE", testFile)
 	defer os.Unsetenv("YGGGO_LOG_FILE")
