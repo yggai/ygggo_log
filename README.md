@@ -7,6 +7,7 @@
 - 支持5种日志级别：DEBUG、INFO、WARNING、ERROR、PANIC
 - 支持自定义输出目标（标准输出、文件、缓冲区等）
 - 支持环境变量配置（通过 .env 文件）
+- **结构化日志**：支持文本和JSON两种格式
 - **单例模式**：`GetLogEnv()` 始终返回同一个日志对象
 - 日志级别过滤功能
 - 线程安全的并发支持
@@ -45,6 +46,7 @@ func main() {
 # 日志配置环境变量
 YGGGO_LOG_LEVEL=DEBUG
 YGGGO_LOG_FILE=app.log
+YGGGO_LOG_FORMAT=json
 ```
 
 使用环境变量配置的日志记录器：
@@ -107,6 +109,7 @@ func main() {
 支持的环境变量：
 - `YGGGO_LOG_LEVEL` - 日志级别（DEBUG、INFO、WARNING、ERROR、PANIC）
 - `YGGGO_LOG_FILE` - 输出文件路径（空值表示输出到标准输出）
+- `YGGGO_LOG_FORMAT` - 日志格式（text、json，默认为text）
 
 ### 自定义日志记录器
 
@@ -119,6 +122,7 @@ func main() {
 - `c01_log/main.go` - 基本日志功能示例
 - `c02_env_config/main.go` - 环境变量配置示例
 - `c03_singleton/main.go` - 单例模式示例
+- `c04_structured_log/main.go` - 结构化日志示例
 
 运行示例：
 
@@ -126,6 +130,7 @@ func main() {
 go run examples/c01_log/main.go
 go run examples/c02_env_config/main.go
 go run examples/c03_singleton/main.go
+go run examples/c04_structured_log/main.go
 ```
 
 ## 测试

@@ -10,8 +10,9 @@ import (
 
 // LogConfig 日志配置结构体
 type LogConfig struct {
-	Level      LogLevel // 日志级别
-	OutputFile string   // 输出文件路径，空字符串表示输出到标准输出
+	Level      LogLevel  // 日志级别
+	OutputFile string    // 输出文件路径，空字符串表示输出到标准输出
+	Format     LogFormat // 日志格式
 }
 
 // LoadConfigFromEnv 从环境变量加载日志配置
@@ -20,8 +21,9 @@ func LoadConfigFromEnv() *LogConfig {
 	ygggo_env.LoadEnv()
 
 	config := &LogConfig{
-		Level:      InfoLevel, // 默认级别为INFO
-		OutputFile: "",        // 默认输出到标准输出
+		Level:      InfoLevel,  // 默认级别为INFO
+		OutputFile: "",         // 默认输出到标准输出
+		Format:     TextFormat, // 默认格式为文本
 	}
 
 	// 读取日志级别
@@ -30,6 +32,10 @@ func LoadConfigFromEnv() *LogConfig {
 
 	// 读取输出文件
 	config.OutputFile = ygggo_env.GetStr("YGGGO_LOG_FILE", "")
+
+	// 读取日志格式
+	formatStr := ygggo_env.GetStr("YGGGO_LOG_FORMAT", "text")
+	config.Format = parseLogFormat(formatStr)
 
 	return config
 }
@@ -59,6 +65,7 @@ func NewLoggerFromEnvWithOutput(output io.Writer) *Logger {
 	config := LoadConfigFromEnv()
 	logger := NewLogger(output)
 	logger.minLevel = config.Level
+	logger.formatter = createFormatter(config.Format)
 	return logger
 }
 
@@ -79,5 +86,6 @@ func NewLoggerFromConfig(config *LogConfig) *Logger {
 
 	logger := NewLogger(output)
 	logger.minLevel = config.Level
+	logger.formatter = createFormatter(config.Format)
 	return logger
 }

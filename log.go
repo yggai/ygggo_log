@@ -1,10 +1,8 @@
 package ygggo_log
 
 import (
-	"fmt"
 	"io"
 	"os"
-	"time"
 )
 
 // LogLevel 定义日志级别
@@ -38,8 +36,9 @@ func (l LogLevel) String() string {
 
 // Logger 日志记录器结构体
 type Logger struct {
-	output   io.Writer
-	minLevel LogLevel // 最小日志级别，低于此级别的日志将被过滤
+	output    io.Writer
+	minLevel  LogLevel  // 最小日志级别，低于此级别的日志将被过滤
+	formatter Formatter // 日志格式化器
 }
 
 // NewLogger 创建一个新的日志记录器
@@ -48,8 +47,9 @@ func NewLogger(output io.Writer) *Logger {
 		output = os.Stdout
 	}
 	return &Logger{
-		output:   output,
-		minLevel: DebugLevel, // 默认显示所有级别的日志
+		output:    output,
+		minLevel:  DebugLevel,         // 默认显示所有级别的日志
+		formatter: NewTextFormatter(), // 默认使用文本格式化器
 	}
 }
 
@@ -60,9 +60,8 @@ func (l *Logger) log(level LogLevel, message string) {
 		return
 	}
 
-	timestamp := time.Now().Format("2006-01-02 15:04:05")
-	logEntry := fmt.Sprintf("%s [%s] %s\n", timestamp, level.String(), message)
-	l.output.Write([]byte(logEntry))
+	// 使用格式化器格式化日志
+	l.formatter.Format(l.output, level, message)
 }
 
 // Debug 生成DEBUG级别的日志
