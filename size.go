@@ -11,30 +11,30 @@ import (
 	"sync"
 )
 
-// RotatingWriter 轮转写入器
+// RotatingWriter performs size- and count-based log rotation compatible with io.Writer.
+// The current file is <filename>. When rotation occurs, files are renamed as
+// <filename>.1, <filename>.2, ... up to maxFiles-1. When exceeding, oldest are removed.
+// Note: On Windows, files are closed after each write to avoid file-lock issues in tests.
 type RotatingWriter struct {
-	filename    string     // 日志文件名
-	maxSize     int64      // 最大文件大小（字节）
-	maxFiles    int        // 最大文件数量（包含当前文件）
-	currentSize int64      // 当前文件大小
-	file        *os.File   // 当前文件句柄
-	mutex       sync.Mutex // 并发保护
+	filename    string     // base log filename (current file)
+	maxSize     int64      // max file size in bytes for rotation
+	maxFiles    int        // max number of files including current
+	currentSize int64      // current file size in bytes
+	file        *os.File   // current file handle
+	mutex       sync.Mutex // concurrency protection
 }
 
-// NewRotatingWriter 创建轮转写入器
+// NewRotatingWriter creates a RotatingWriter bound to the given filename, with
+// a size limit and a maximum number of files (including the current file).
 func NewRotatingWriter(filename string, maxSize int64, maxFiles int) (*RotatingWriter, error) {
 	rw := &RotatingWriter{
 		filename: filename,
 		maxSize:  maxSize,
 		maxFiles: maxFiles,
 	}
-
-	// 打开或创建文件
-	err := rw.openFile()
-	if err != nil {
+	if err := rw.openFile(); err != nil {
 		return nil, err
 	}
-
 	return rw, nil
 }
 

@@ -9,56 +9,66 @@ import (
 	"github.com/yggai/ygggo_env"
 )
 
-// LogConfig 日志配置结构体
+// LogConfig holds logger configuration values loaded from environment variables.
+// See LoadConfigFromEnv for defaults and supported variables.
 type LogConfig struct {
-	Level      LogLevel  // 日志级别
-	OutputFile string    // 输出文件路径，空字符串表示输出到标准输出
-	Format     LogFormat // 日志格式
-	Console    bool      // 是否输出到控制台
-	Color      bool      // 是否使用彩色输出
-	FileSize   int64     // 日志文件大小限制（字节）
-	FileNum    int       // 日志文件数量限制
+	Level      LogLevel  // minimum log level
+	OutputFile string    // output file path; empty means stdout only
+	Format     LogFormat // text or json for non-colored outputs
+	Console    bool      // force console output
+	Color      bool      // color output for console
+	FileSize   int64     // max file size in bytes (rotation)
+	FileNum    int       // max number of files (rotation)
 }
 
-// LoadConfigFromEnv 从环境变量加载日志配置
+// LoadConfigFromEnv loads configuration from environment variables, applying
+// sensible defaults. It also ensures the .env file is read, if present.
+// Defaults:
+//   - Level: INFO
+//   - OutputFile: "" (stdout only; conventions may choose a default file path)
+//   - Format: text
+//   - Console: false
+//   - Color: false
+//   - FileSize: 100MB
+//   - FileNum: 3
 func LoadConfigFromEnv() *LogConfig {
-	// 加载环境变量
+	// Load .env and OS environment
 	ygggo_env.LoadEnv()
 
 	config := &LogConfig{
-		Level:      InfoLevel,         // 默认级别为INFO
-		OutputFile: "",                // 默认输出到标准输出
-		Format:     TextFormat,        // 默认格式为文本
-		Console:    false,             // 默认不强制输出到控制台
-		Color:      false,             // 默认不使用彩色输出
-		FileSize:   100 * 1024 * 1024, // 默认100MB
-		FileNum:    3,                 // 默认3个文件
+		Level:      InfoLevel,
+		OutputFile: "",
+		Format:     TextFormat,
+		Console:    false,
+		Color:      false,
+		FileSize:   100 * 1024 * 1024,
+		FileNum:    3,
 	}
 
-	// 读取日志级别
+	// Level
 	levelStr := ygggo_env.GetStr("YGGGO_LOG_LEVEL", "INFO")
 	config.Level = parseLogLevel(levelStr)
 
-	// 读取输出文件
+	// Output file
 	config.OutputFile = ygggo_env.GetStr("YGGGO_LOG_FILE", "")
 
-	// 读取日志格式
+	// Format
 	formatStr := ygggo_env.GetStr("YGGGO_LOG_FORMAT", "text")
 	config.Format = parseLogFormat(formatStr)
 
-	// 读取控制台输出配置
+	// Console
 	consoleStr := ygggo_env.GetStr("YGGGO_LOG_CONSOLE", "false")
 	config.Console = parseBool(consoleStr)
 
-	// 读取彩色输出配置
+	// Color
 	colorStr := ygggo_env.GetStr("YGGGO_LOG_COLOR", "false")
 	config.Color = parseBool(colorStr)
 
-	// 读取文件大小配置
+	// File size
 	fileSizeStr := ygggo_env.GetStr("YGGGO_LOG_FILE_SIZE", "100M")
 	config.FileSize = parseSizeString(fileSizeStr)
 
-	// 读取文件数量配置
+	// File num
 	fileNumStr := ygggo_env.GetStr("YGGGO_LOG_FILE_NUM", "3")
 	config.FileNum = parseFileNum(fileNumStr)
 
@@ -85,34 +95,29 @@ func parseLogLevel(levelStr string) LogLevel {
 
 // GetLogEnv 现在在 singleton.go 中实现为单例模式
 
-// NewLoggerFromEnvWithOutput 根据环境变量创建日志记录器，但使用指定的输出
+// NewLoggerFromEnvWithOutput creates a Logger using environment settings but
+// writing to the provided output. Useful for tests or custom sinks.
 func NewLoggerFromEnvWithOutput(output io.Writer) *Logger {
 	config := LoadConfigFromEnv()
 	logger := NewLogger(output)
 	logger.minLevel = config.Level
 
-	// 根据配置选择格式化器
 	if config.Color {
 		logger.formatter = NewColorFormatter()
 	} else {
 		logger.formatter = createFormatter(config.Format)
 	}
-
 	return logger
 }
 
-// NewLoggerFromConfig 根据配置创建日志记录器
+// NewLoggerFromConfig creates a Logger that follows convention-over-configuration
+// defaults: colored console + JSON file with rotation, INFO level, and async console
+// writes. File path defaults to logs/YYYYMMDD_HHMMSS.log when not provided.
 func NewLoggerFromConfig(config *LogConfig) *Logger {
-	// 采用约定大于配置：
-	// - 默认INFO
-	// - 控制台彩色、文件JSON
-	// - 文件轮转、大小/数量限制
-	// - 异步写入
-
-	// 控制台彩色（异步）
+	// Console: colored + async buffering
 	console := NewAsyncWriter(os.Stdout, 1024)
 
-	// 文件（异步+轮转）
+	// File: rotation (size/count), default path under logs/
 	filePath := config.OutputFile
 	if filePath == "" {
 		_ = os.MkdirAll("logs", 0755)
@@ -121,19 +126,19 @@ func NewLoggerFromConfig(config *LogConfig) *Logger {
 	rot, _ := NewRotatingWriter(filePath, config.FileSize, config.FileNum)
 	var fileOut io.Writer
 	if rot != nil {
-		fileOut = rot // 同步写入，避免测试环境清理冲突
+		fileOut = rot // sync by default; stable for tests & Windows
 	}
 
-	// 组合格式化器：控制台彩色 + 文件JSON
+	// Combined formatter: console (color) + file (JSON)
 	combined := NewCombinedFormatter(console, fileOut)
 
-	logger := NewLogger(io.Discard) // output弃用，由formatter写到目标
-	logger.minLevel = config.Level  // 默认由配置决定，默认INFO
+	logger := NewLogger(io.Discard) // formatter writes to destinations
+	logger.minLevel = config.Level
 	logger.formatter = combined
 	return logger
 }
 
-// parseBool 解析布尔值字符串
+// parseBool parses a boolean-ish string into a bool.
 func parseBool(boolStr string) bool {
 	switch strings.ToLower(boolStr) {
 	case "true", "1", "yes", "on":
@@ -141,18 +146,18 @@ func parseBool(boolStr string) bool {
 	case "false", "0", "no", "off":
 		return false
 	default:
-		return false // 默认返回false
+		return false
 	}
 }
 
-// InitLogEnv 基于环境变量初始化全局日志（defaultLogger）
-// 可显式调用；包导入时也会通过 init() 自动调用一次
+// InitLogEnv initializes the package-level defaultLogger from environment
+// variables and conventions. It runs automatically on package import, and can
+// also be called explicitly by applications.
 func InitLogEnv() {
 	config := LoadConfigFromEnv()
 	defaultLogger = NewLoggerFromConfig(config)
 }
 
 func init() {
-	// 包导入时自动初始化一次
 	InitLogEnv()
 }

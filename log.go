@@ -7,14 +7,20 @@ import (
 	"strings"
 )
 
-// LogLevel 定义日志级别
+// LogLevel represents severity for log records in ascending order.
+// Values are ordered so that higher levels represent more severe events.
 type LogLevel int
 
 const (
+	// DebugLevel is used for verbose diagnostic information to help troubleshooting.
 	DebugLevel LogLevel = iota
+	// InfoLevel is used for routine information, startup messages, progress, etc.
 	InfoLevel
+	// WarningLevel indicates something unexpected happened, but the application continues.
 	WarningLevel
+	// ErrorLevel indicates an error occurred that prevented an operation from succeeding.
 	ErrorLevel
+	// PanicLevel logs the message and triggers a panic.
 	PanicLevel
 )
 
@@ -36,50 +42,49 @@ func (l LogLevel) String() string {
 	}
 }
 
-// Logger 日志记录器结构体
+// Logger is a minimal, pluggable logger with level filtering and a formatter.
+// It is concurrency-safe as long as the configured output is safe for concurrent writes.
 type Logger struct {
 	output    io.Writer
-	minLevel  LogLevel  // 最小日志级别，低于此级别的日志将被过滤
-	formatter Formatter // 日志格式化器
+	minLevel  LogLevel  // Minimum level to emit; messages below are discarded.
+	formatter Formatter // Responsible for rendering a log entry to the output.
 }
 
-// NewLogger 创建一个新的日志记录器
+// NewLogger creates a new Logger that writes to the provided output.
+// If output is nil, os.Stdout is used. By default, the logger prints all levels
+// using a TextFormatter.
 func NewLogger(output io.Writer) *Logger {
 	if output == nil {
 		output = os.Stdout
 	}
 	return &Logger{
 		output:    output,
-		minLevel:  DebugLevel,         // 默认显示所有级别的日志
-		formatter: NewTextFormatter(), // 默认使用文本格式化器
+		minLevel:  DebugLevel,         // default: emit all levels
+		formatter: NewTextFormatter(), // default: text formatter
 	}
 }
 
-// log 内部日志记录方法（支持可选参数）
+// log writes a log entry at the given level after level filtering. It accepts
+// variadic arguments and appends them to the message as key=value pairs.
 func (l *Logger) log(level LogLevel, message string, args ...any) {
-	// 检查日志级别是否满足最小级别要求
 	if level < l.minLevel {
 		return
 	}
-
-	// 构建包含参数的消息
 	fullMsg := l.buildMessage(message, args...)
-
-	// 使用格式化器格式化日志
 	l.formatter.Format(l.output, level, fullMsg)
 }
 
-// buildMessage 将 message 与可选参数拼接为一个字符串
-// 支持的参数形式：
-// - 字符串（直接追加）
-// - 形如 "key=value" 的字符串
-// - map[string]any
-// - 任意值（按 v1 v2 v3 顺序追加）
+// buildMessage joins message with formatted parameters. Supported argument forms:
+//   - string (appended directly)
+//   - "key=value" strings
+//   - map[string]any
+//   - any other value, appended in order
+//
+// When ColorFormatter is in use, keys and values are colorized.
 func (l *Logger) buildMessage(message string, args ...any) string {
 	if len(args) == 0 {
 		return message
 	}
-	// 简易拼接：message + " " + params
 	var params string
 	switch l.formatter.(type) {
 	case *ColorFormatter:
